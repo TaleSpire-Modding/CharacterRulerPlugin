@@ -1,0 +1,11 @@
+{
+    "name": "Character_Ruler_Plugin",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/TaleSpire-Modding/CharacterRulerPlugin",
+    "description": "Adds abilities to create rulers snapped to Character Base",
+    "dependencies": [
+        "bbepisTaleSpire-BepInExPack-5.4.10",
+	"brcoding-SetInjectionFlagPlugin-3.0.0",
+	"HolloFox_TS-RadialUIPlugin-3.0.0"
+    ]
+}
