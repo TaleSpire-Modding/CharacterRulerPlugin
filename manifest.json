@@ -1,6 +1,6 @@
 {
     "name": "Character_Ruler_Plugin",
-    "version_number": "1.0.0",
+    "version_number": "1.0.1",
     "website_url": "https://github.com/TaleSpire-Modding/CharacterRulerPlugin",
     "description": "Adds abilities to create rulers snapped to Character Base",
     "dependencies": [

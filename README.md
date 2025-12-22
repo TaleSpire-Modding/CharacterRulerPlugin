@@ -8,17 +8,20 @@ Adds abilities to create rulers snapped to Character Base
 Currently you need to either follow the build guide down below or use the R2ModMan. 
 
 ## Usage
-
+Player: While having a selected mini, open the radial menu and select "Attack" => "Measure Distance". A line ruler will be created snapped to the base of your mini to the selected mini.
+When either mini moves, the Ruler will be updated to the new positions. If Line of Sight is broken, then the ruler will disappear. You can delete the ruler by going through the radial menu same as before and select "Remove Ruler".
+GM: Same as Player, but the Ruler will not dissapear if Line Of Sight is broken. This doesn't apply if you're in player mode.
 
 ## How to Compile / Modify
 
-Open ```Adds abilities to create rulers snapped to Character Base.sln``` in Visual Studio.
+Open ```CharacterRulerPlugin.sln``` in Visual Studio.
 
 Build the project (We now use Nuget).
 
 Browse to the newly created ```bin/Debug``` or ```bin/Release``` folders and copy the ```.dll``` to ```Steam\steamapps\common\TaleSpire\BepInEx\plugins```
 
 ## Changelog
+- 1.0.1: Update README documentation. No code changes
 - 1.0.0: Initial release
 
 ## Shoutouts
