@@ -1,6 +1,5 @@
 using BepInEx;
 using Bounce.Unmanaged;
-using GLTFast.Schema;
 using HarmonyLib;
 using ModdingTales;
 using System.Collections.Generic;
@@ -27,7 +26,7 @@ namespace CharacterRuler
             Debug.Log("Character Ruler loaded");
 
             ModdingUtils.AddPluginToMenuList(this);
-            var harmony = new Harmony(Guid);
+            Harmony harmony = new Harmony(Guid);
             harmony.PatchAll();
 
             RadialUI.RadialUIPlugin.AddCustomButtonAttacksSubmenu($"{Guid}.AddRuler", new MapMenu.ItemArgs
@@ -47,16 +46,27 @@ namespace CharacterRuler
 
         private void RemoveLineRuler(MapMenuItem arg1, object arg2)
         {
-            var a = LocalClient.SelectedCreatureId;
-            var b = new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature());
-
-            // Find all rulers involving both creatures
-            var rulers = ActiveRulers[a].Where(r => ActiveRulers[b].Contains(r)).ToArray();
-            
-            foreach (var ruler in rulers)
+            CreatureGuid[] selectedAssets;
+            if (LocalClient.HasLassoedCreatures)
             {
-                RemoveRulerTracking(ruler);
-                ruler.Dispose();
+                LocalClient.TryGetLassoedCreatureIds(out selectedAssets);
+            }
+            else
+            {
+                selectedAssets = new[] { LocalClient.SelectedCreatureId };
+            }
+
+            CreatureGuid targetId = new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature());
+
+            foreach (CreatureGuid selectedAssetId in selectedAssets) {
+                // Find all rulers involving both creatures
+                Ruler[] rulers = ActiveRulers[selectedAssetId].Where(r => ActiveRulers[targetId].Contains(r)).ToArray();
+
+                foreach (Ruler ruler in rulers)
+                {
+                    RemoveRulerTracking(ruler);
+                    ruler.Dispose();
+                }
             }
         }
 
@@ -68,51 +78,67 @@ namespace CharacterRuler
             if (LocalClient.SelectedCreatureId == null)
                 return;
 
-            CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out var asset);
-            CreaturePresenter.TryGetAsset(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature()), out var asset2);
+            CreatureGuid[] assets;
+            if (LocalClient.HasLassoedCreatures)
+            {
+                LocalClient.TryGetLassoedCreatureIds(out assets);
+            }
+            else
+            {
+                assets = new  [] { LocalClient.SelectedCreatureId};
+            }
 
-            var pos = new Unity.Mathematics.float3[]{
-                asset.LastPlacedPosition,
-                asset2.LastPlacedPosition,
+            CreaturePresenter.TryGetAsset(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature()), out CreatureBoardAsset asset2);
+            CreatureGuid targetId = new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature());
+            foreach (CreatureGuid assetId in assets)
+            {
+                CreaturePresenter.TryGetAsset(assetId, out CreatureBoardAsset asset);
+
+                float3[] pos = new float3[]{
+                    asset.LastPlacedPosition,
+                    asset2.LastPlacedPosition,
                 };
-            var npos = new NativeArray<Unity.Mathematics.float3>(pos, Allocator.TempJob);
-            var r = Ruler.Spawn("Rulers/PhotonRuler", 1, npos.AsReadOnly());
-            npos.Dispose();
+                NativeArray<float3> npos = new NativeArray<float3>(pos, Allocator.TempJob);
+                Ruler newRuler = Ruler.Spawn("Rulers/PhotonRuler", 1, npos.AsReadOnly());
+                npos.Dispose();
 
-            if (ActiveRulers.ContainsKey(LocalClient.SelectedCreatureId))
-                ActiveRulers[LocalClient.SelectedCreatureId].Add(r);
-            else
-                ActiveRulers[LocalClient.SelectedCreatureId] = new List<Ruler>() { r };
+                if (ActiveRulers.ContainsKey(assetId))
+                    ActiveRulers[assetId].Add(newRuler);
+                else
+                    ActiveRulers[assetId] = new List<Ruler>() { newRuler };
 
-            if (ActiveRulers.ContainsKey(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())))
-                ActiveRulers[new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())].Add(r);
-            else
-                ActiveRulers[new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())] = new List<Ruler>() { r };
+                if (ActiveRulers.ContainsKey(targetId))
+                    ActiveRulers[targetId].Add(newRuler);
+                else
+                    ActiveRulers[targetId] = new List<Ruler>() { newRuler };
 
-            Rulers[r] = new List<CreatureGuid>() { 
-                new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature()),
-                LocalClient.SelectedCreatureId
-            };
+                Rulers[newRuler] = new List<CreatureGuid>() {
+                    targetId,
+                    assetId
+                };
+            }
         }
 
         internal static DictionaryList<Ruler, List<CreatureGuid>> Rulers = new DictionaryList<Ruler, List<CreatureGuid>>();
         internal static DictionaryList<CreatureGuid, List<Ruler>> ActiveRulers = new DictionaryList<CreatureGuid, List<Ruler>>();
 
+        // Checks if there is NO active ruler between two creatures
         internal static bool NoRulerBetween(NGuid first, NGuid second) => !HasRulerBetween(first, second);
-        
+
+        // Checks if there is an active ruler between two creatures
         internal static bool HasRulerBetween(NGuid first, NGuid second)
         {
-            var a = new CreatureGuid(first);
-            var b = new CreatureGuid(second);
+            CreatureGuid a = new CreatureGuid(first);
+            CreatureGuid b = new CreatureGuid(second);
 
             // If either creature has no active rulers, there can't be one between them
-            if (!ActiveRulers.TryGetValue(a, out var rulersForA))
+            if (!ActiveRulers.TryGetValue(a, out List<Ruler> rulersForA))
                 return false;
 
             // Check only rulers that already involve creature A
-            foreach (var ruler in rulersForA)
+            foreach (Ruler ruler in rulersForA)
             {
-                if (!Rulers.TryGetValue(ruler, out var creatures))
+                if (!Rulers.TryGetValue(ruler, out List<CreatureGuid> creatures))
                     continue;
 
                 // A ruler between exactly means it contains both endpoints
@@ -123,27 +149,27 @@ namespace CharacterRuler
             return false;
         }
 
-
+        // Handles LOS updates for all active rulers
         internal static void LOSUpdate(CreatureGuid id, LineOfSightManager.LineOfSightResult result)
         {
-            if (!ActiveRulers.TryGetValue(id, out var rulersForCreature))
+            if (!ActiveRulers.TryGetValue(id, out List<Ruler> rulersForCreature))
                 return;
 
             // Phase 1: evaluation (NO side effects)
-            var rulersToRemove = new HashSet<Ruler>();
-            var rulersToUpdate = new Dictionary<Ruler, List<CreatureGuid>>();
+            HashSet<Ruler> rulersToRemove = new HashSet<Ruler>();
+            Dictionary<Ruler, List<CreatureGuid>> rulersToUpdate = new Dictionary<Ruler, List<CreatureGuid>>();
 
-            foreach (var ruler in rulersForCreature)
+            foreach (Ruler ruler in rulersForCreature)
             {
-                var targets = Rulers[ruler];
+                List<CreatureGuid> targets = Rulers[ruler];
                 bool losBroken = false;
 
-                foreach (var target in targets)
+                foreach (CreatureGuid target in targets)
                 {
                     if (target == id)
                         continue;
 
-                    if (!CreaturePresenter.TryGetAsset(target, out var asset) || (!result.HasLineOfSightTo(asset) && !LocalClient.IsInGmMode))
+                    if (!CreaturePresenter.TryGetAsset(target, out CreatureBoardAsset asset) || (!result.HasLineOfSightTo(asset) && !LocalClient.IsInGmMode))
                     {
                         losBroken = true;
                         break;
@@ -161,30 +187,30 @@ namespace CharacterRuler
             }
 
             // Phase 2: remove rulers with broken LOS
-            foreach (var ruler in rulersToRemove)
+            foreach (Ruler ruler in rulersToRemove)
             {
                 RemoveRulerTracking(ruler);
                 ruler.Dispose();
             }
 
             // Phase 3: update rulers (replace + dispose originals)
-            foreach (var kvp in rulersToUpdate)
+            foreach (KeyValuePair<Ruler, List<CreatureGuid>> kvp in rulersToUpdate)
             {
-                var oldRuler = kvp.Key;
-                var creatures = kvp.Value;
+                Ruler oldRuler = kvp.Key;
+                List<CreatureGuid> creatures = kvp.Value;
 
                 Debug.Log($"Updating ruler for {id} assets moved");
 
-                var positions = creatures
+                float3[] positions = creatures
                     .Select(g =>
                     {
-                        CreaturePresenter.TryGetAsset(g, out var ca);
+                        CreaturePresenter.TryGetAsset(g, out CreatureBoardAsset ca);
                         return ca.LastPlacedPosition;
                     })
                     .ToArray();
 
-                var nativePos = new NativeArray<float3>(positions, Allocator.TempJob);
-                var newRuler = Ruler.Spawn(
+                NativeArray<float3> nativePos = new NativeArray<float3>(positions, Allocator.TempJob);
+                Ruler newRuler = Ruler.Spawn(
                     "Rulers/PhotonRuler",
                     oldRuler.CurrentModeIndex,
                     nativePos.AsReadOnly()
@@ -196,9 +222,9 @@ namespace CharacterRuler
 
                 // Add new ruler to tracking
                 Rulers[newRuler] = creatures;
-                foreach (var creature in creatures)
+                foreach (CreatureGuid creature in creatures)
                 {
-                    if (!ActiveRulers.TryGetValue(creature, out var list))
+                    if (!ActiveRulers.TryGetValue(creature, out List<Ruler> list))
                     {
                         list = new List<Ruler>();
                         ActiveRulers[creature] = list;
@@ -211,17 +237,17 @@ namespace CharacterRuler
             }
         }
 
-
+        // Removes a ruler from all tracking dictionaries
         private static void RemoveRulerTracking(Ruler ruler)
         {
-            if (!Rulers.TryGetValue(ruler, out var creatures))
+            if (!Rulers.TryGetValue(ruler, out List<CreatureGuid> creatures))
                 return;
 
             Rulers.Remove(ruler);
 
-            foreach (var creature in creatures)
+            foreach (CreatureGuid creature in creatures)
             {
-                if (!ActiveRulers.TryGetValue(creature, out var list))
+                if (!ActiveRulers.TryGetValue(creature, out List<Ruler> list))
                     continue;
 
                 list.Remove(ruler);

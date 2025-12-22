@@ -21,6 +21,7 @@ Build the project (We now use Nuget).
 Browse to the newly created ```bin/Debug``` or ```bin/Release``` folders and copy the ```.dll``` to ```Steam\steamapps\common\TaleSpire\BepInEx\plugins```
 
 ## Changelog
+- 1.1.0: Add Bulk Creature Support to allow multiple lines measured to a creature at once
 - 1.0.1: Update README documentation. No code changes
 - 1.0.0: Initial release
 
