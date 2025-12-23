@@ -10,11 +10,13 @@ using UnityEngine;
 
 namespace CharacterRuler
 {
-    [BepInPlugin(Guid, "Character Ruler Plugin", Version)]
+    [BepInPlugin(Guid, PluginName, Version)]
+    [BepInDependency(PluginUtilities.SetInjectionFlag.Guid)]
     [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
     public class CharacterRulerPlugin : BaseUnityPlugin
     {
         // constants
+        public const string PluginName = "Character Ruler Plugin";
         public const string Guid = "org.hollofox.plugins.CharacterRulerPlugin";
         public const string Version = "0.0.0.0";
 
