@@ -26,6 +26,10 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+    <None Include="..\manifest.json">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="TaleSpire" Version="1.5.0"></PackageReference>
