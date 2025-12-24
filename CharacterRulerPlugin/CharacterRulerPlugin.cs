@@ -20,6 +20,10 @@ namespace CharacterRuler
         public const string Guid = "org.hollofox.plugins.CharacterRulerPlugin";
         public const string Version = "0.0.0.0";
 
+        // static datastructure to track rulers
+        internal static DictionaryList<Ruler, List<CreatureGuid>> Rulers = new DictionaryList<Ruler, List<CreatureGuid>>();
+        internal static DictionaryList<CreatureGuid, List<Ruler>> ActiveRulers = new DictionaryList<CreatureGuid, List<Ruler>>();
+
         /// <summary>
         /// Awake plugin
         /// </summary>
@@ -46,8 +50,12 @@ namespace CharacterRuler
             }, HasRulerBetween);
         }
 
+        // Removes a line ruler between selected creature(s) and target creature
         private void RemoveLineRuler(MapMenuItem arg1, object arg2)
         {
+            if (LocalClient.SelectedCreatureId == null && !LocalClient.HasLassoedCreatures)
+                return;
+
             CreatureGuid[] selectedAssets;
             if (LocalClient.HasLassoedCreatures)
             {
@@ -72,13 +80,15 @@ namespace CharacterRuler
             }
         }
 
+        // Creates a line ruler between selected creature(s) and target creature
         private void CreateLineRuler(MapMenuItem arg1, object arg2)
         {
+            if (LocalClient.SelectedCreatureId == null && !LocalClient.HasLassoedCreatures)
+                return;
+
+            // Register for LOS updates
             CreaturePerceptionManager.OnLineOfSightUpdated -= LOSUpdate;
             CreaturePerceptionManager.OnLineOfSightUpdated += LOSUpdate;
-
-            if (LocalClient.SelectedCreatureId == null)
-                return;
 
             CreatureGuid[] assets;
             if (LocalClient.HasLassoedCreatures)
@@ -121,9 +131,7 @@ namespace CharacterRuler
             }
         }
 
-        internal static DictionaryList<Ruler, List<CreatureGuid>> Rulers = new DictionaryList<Ruler, List<CreatureGuid>>();
-        internal static DictionaryList<CreatureGuid, List<Ruler>> ActiveRulers = new DictionaryList<CreatureGuid, List<Ruler>>();
-
+        
         // Checks if there is NO active ruler between two creatures
         internal static bool NoRulerBetween(NGuid first, NGuid second) => !HasRulerBetween(first, second);
 
@@ -151,9 +159,31 @@ namespace CharacterRuler
             return false;
         }
 
+        internal static void MoveUpdate(CreatureGuid id)
+        {
+            if (!ActiveRulers.TryGetValue(id, out List<Ruler> rulersForCreature))
+                return;
+
+            // Phase 1: evaluation (NO side effects)
+            Dictionary<Ruler, List<CreatureGuid>> rulersToUpdate = new Dictionary<Ruler, List<CreatureGuid>>();
+
+            foreach (Ruler ruler in rulersForCreature)
+            {
+                List<CreatureGuid> targets = Rulers[ruler];
+                rulersToUpdate.Add(ruler, targets);
+            }
+
+            // Phase 2: update rulers (replace + dispose originals)
+            UpdateRulers(id, rulersToUpdate);
+        }
+
         // Handles LOS updates for all active rulers
         internal static void LOSUpdate(CreatureGuid id, LineOfSightManager.LineOfSightResult result)
         {
+            // We use the GM mode bypass to avoid LOS checks for GMs
+            if (LocalClient.IsInGmMode)
+                return;
+
             if (!ActiveRulers.TryGetValue(id, out List<Ruler> rulersForCreature))
                 return;
 
@@ -171,7 +201,7 @@ namespace CharacterRuler
                     if (target == id)
                         continue;
 
-                    if (!CreaturePresenter.TryGetAsset(target, out CreatureBoardAsset asset) || (!result.HasLineOfSightTo(asset) && !LocalClient.IsInGmMode))
+                    if (!CreaturePresenter.TryGetAsset(target, out CreatureBoardAsset asset) || !result.HasLineOfSightTo(asset))
                     {
                         losBroken = true;
                         break;
@@ -196,6 +226,11 @@ namespace CharacterRuler
             }
 
             // Phase 3: update rulers (replace + dispose originals)
+            UpdateRulers(id, rulersToUpdate);
+        }
+
+        internal static void UpdateRulers(CreatureGuid id, Dictionary<Ruler, List<CreatureGuid>> rulersToUpdate)
+        {
             foreach (KeyValuePair<Ruler, List<CreatureGuid>> kvp in rulersToUpdate)
             {
                 Ruler oldRuler = kvp.Key;
