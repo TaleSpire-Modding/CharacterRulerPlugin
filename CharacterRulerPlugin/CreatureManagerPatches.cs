@@ -11,6 +11,7 @@ namespace CharacterRulerPlugin
         {
             if (!LocalClient.IsInGmMode)
                 return;
+            
             CharacterRuler.CharacterRulerPlugin.MoveUpdate(op.CreatureId);
         }
     }
@@ -23,7 +24,7 @@ namespace CharacterRulerPlugin
             if (!LocalClient.IsInGmMode)
                 return;
 
-            foreach (var creatureId in op.CreatureIds)
+            foreach (CreatureGuid creatureId in op.CreatureIds)
             {
                 CharacterRuler.CharacterRulerPlugin.MoveUpdate(creatureId);
             }
