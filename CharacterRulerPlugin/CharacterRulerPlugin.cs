@@ -2,6 +2,8 @@ using BepInEx;
 using Bounce.Unmanaged;
 using HarmonyLib;
 using ModdingTales;
+using PluginUtilities;
+using RadialUI;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Collections;
@@ -11,9 +13,9 @@ using UnityEngine;
 namespace CharacterRuler
 {
     [BepInPlugin(Guid, PluginName, Version)]
-    [BepInDependency(PluginUtilities.SetInjectionFlag.Guid)]
-    [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
-    public class CharacterRulerPlugin : BaseUnityPlugin
+    [BepInDependency(SetInjectionFlag.Guid)]
+    [BepInDependency(RadialUIPlugin.Guid)]
+    public class CharacterRulerPlugin : DependencyUnityPlugin
     {
         // constants
         public const string PluginName = "Character Ruler Plugin";
@@ -24,30 +26,59 @@ namespace CharacterRuler
         internal static DictionaryList<Ruler, List<CreatureGuid>> Rulers = new DictionaryList<Ruler, List<CreatureGuid>>();
         internal static DictionaryList<CreatureGuid, List<Ruler>> ActiveRulers = new DictionaryList<CreatureGuid, List<Ruler>>();
 
+        private Harmony harmony;
         /// <summary>
         /// Awake plugin
         /// </summary>
-        void Awake()
+        protected override void OnAwake()
         {
-            Debug.Log("Character Ruler loaded");
+            Logger.LogDebug("Character Ruler loaded");
 
             ModdingUtils.AddPluginToMenuList(this);
-            Harmony harmony = new Harmony(Guid);
+            harmony = new Harmony(Guid);
             harmony.PatchAll();
 
-            RadialUI.RadialUIPlugin.AddCustomButtonAttacksSubmenu($"{Guid}.AddRuler", new MapMenu.ItemArgs
+            RadialUIPlugin.AddCustomButtonAttacksSubmenu($"{Guid}.AddRuler", new MapMenu.ItemArgs
             {
                 Title = "Measure Distance",
                 Action = CreateLineRuler,
                 CloseMenuOnActivate = true,
             }, NoRulerBetween);
 
-            RadialUI.RadialUIPlugin.AddCustomButtonAttacksSubmenu($"{Guid}.RemoveRuler", new MapMenu.ItemArgs
+            RadialUIPlugin.AddCustomButtonAttacksSubmenu($"{Guid}.RemoveRuler", new MapMenu.ItemArgs
             {
                 Title = "Remove Ruler",
                 Action = RemoveLineRuler,
                 CloseMenuOnActivate = true,
             }, HasRulerBetween);
+        }
+
+        /// <summary>
+        /// Cleanup on destroy
+        /// </summary>
+        protected override void OnDestroyed()
+        {
+            Logger.LogDebug("Unloading Character Ruler");
+
+            // Dispose all active rulers
+            var rulers = Rulers.Keys.ToArray();
+            foreach (Ruler ruler in rulers)
+            {
+                RemoveRulerTracking(ruler);
+                ruler.Dispose();
+            }
+
+            // Unregister Radial UI buttons
+            RadialUIPlugin.RemoveCustomButtonAttacksSubmenu($"{Guid}.AddRuler");
+            RadialUIPlugin.RemoveCustomButtonAttacksSubmenu($"{Guid}.RemoveRuler");
+
+            // Unregister LOS update handler
+            CreaturePerceptionManager.OnLineOfSightUpdated -= LOSUpdate;
+
+            // Unpatch Harmony patches
+            harmony.UnpatchSelf();
+
+            Logger.LogDebug("Character Ruler unloaded");
         }
 
         // Removes a line ruler between selected creature(s) and target creature
@@ -131,7 +162,6 @@ namespace CharacterRuler
             }
         }
 
-        
         // Checks if there is NO active ruler between two creatures
         internal static bool NoRulerBetween(NGuid first, NGuid second) => !HasRulerBetween(first, second);
 
@@ -159,6 +189,7 @@ namespace CharacterRuler
             return false;
         }
 
+        // Handles move updates for all active rulers
         internal static void MoveUpdate(CreatureGuid id)
         {
             if (!ActiveRulers.TryGetValue(id, out List<Ruler> rulersForCreature))
