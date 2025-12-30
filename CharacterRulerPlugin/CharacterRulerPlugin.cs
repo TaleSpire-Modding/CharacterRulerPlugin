@@ -35,7 +35,6 @@ namespace CharacterRuler
         {
             Logger.LogDebug("Character Ruler loaded");
 
-            ModdingUtils.AddPluginToMenuList(this);
             harmony = new Harmony(Guid);
             harmony.PatchAll();
 
