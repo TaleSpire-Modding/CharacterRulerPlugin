@@ -21,6 +21,7 @@ Build the project (We now use Nuget).
 Browse to the newly created ```bin/Debug``` or ```bin/Release``` folders and copy the ```.dll``` to ```Steam\steamapps\common\TaleSpire\BepInEx\plugins```
 
 ## Changelog
+- 1.3.1: Bump SetInjectionFlag and RadialUI package version
 - 1.3.0: Added dynamic unpatch support via DependencyUnityPlugin
 - 1.2.0: Patched CreatureManager to alert minis movement for GM mode instead of LOS update for both performance and User Experience
 - 1.1.0: Add Bulk Creature Support to allow multiple lines measured to a creature at once

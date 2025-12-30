@@ -27,6 +27,7 @@ namespace CharacterRuler
         internal static DictionaryList<CreatureGuid, List<Ruler>> ActiveRulers = new DictionaryList<CreatureGuid, List<Ruler>>();
 
         private Harmony harmony;
+        
         /// <summary>
         /// Awake plugin
         /// </summary>
