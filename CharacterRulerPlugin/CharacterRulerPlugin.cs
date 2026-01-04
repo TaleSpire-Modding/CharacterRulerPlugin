@@ -1,7 +1,6 @@
 using BepInEx;
 using Bounce.Unmanaged;
 using HarmonyLib;
-using ModdingTales;
 using PluginUtilities;
 using RadialUI;
 using System.Collections.Generic;
@@ -64,7 +63,6 @@ namespace CharacterRuler
             var rulers = Rulers.Keys.ToArray();
             foreach (Ruler ruler in rulers)
             {
-                RemoveRulerTracking(ruler);
                 ruler.Dispose();
             }
 
@@ -105,7 +103,6 @@ namespace CharacterRuler
 
                 foreach (Ruler ruler in rulers)
                 {
-                    RemoveRulerTracking(ruler);
                     ruler.Dispose();
                 }
             }
@@ -252,7 +249,6 @@ namespace CharacterRuler
             // Phase 2: remove rulers with broken LOS
             foreach (Ruler ruler in rulersToRemove)
             {
-                RemoveRulerTracking(ruler);
                 ruler.Dispose();
             }
 
@@ -285,9 +281,6 @@ namespace CharacterRuler
                 );
                 nativePos.Dispose();
 
-                // Remove old ruler from tracking BEFORE disposing
-                RemoveRulerTracking(oldRuler);
-
                 // Add new ruler to tracking
                 Rulers[newRuler] = creatures;
                 foreach (CreatureGuid creature in creatures)
@@ -306,7 +299,7 @@ namespace CharacterRuler
         }
 
         // Removes a ruler from all tracking dictionaries
-        private static void RemoveRulerTracking(Ruler ruler)
+        internal static void RemoveRulerTracking(Ruler ruler)
         {
             if (!Rulers.TryGetValue(ruler, out List<CreatureGuid> creatures))
                 return;
@@ -322,6 +315,19 @@ namespace CharacterRuler
 
                 if (list.Count == 0)
                     ActiveRulers.Remove(creature);
+            }
+        }
+
+        // Removes all rulers associated with a creature
+        internal static void RemoveCreatureTracking(CreatureGuid id)
+        {
+            if (!ActiveRulers.ContainsKey(id))
+                return;
+            var rulers = ActiveRulers[id].ToArray();
+
+            foreach (var ruler in rulers)
+            {
+                ruler.Dispose();
             }
         }
 
