@@ -48,7 +48,7 @@ namespace CharacterRulerPlugin.Patches
     {
         static void Postfix(DeleteCreaturesOp op, MessageInfo msgInfo)
         {
-            foreach (var creatureId in op.CreatureIds)
+            foreach (CreatureGuid creatureId in op.CreatureIds)
             {
                 CharacterRuler.CharacterRulerPlugin.RemoveCreatureTracking(creatureId);
             }

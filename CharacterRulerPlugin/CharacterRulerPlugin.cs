@@ -60,7 +60,7 @@ namespace CharacterRuler
             Logger.LogDebug("Unloading Character Ruler");
 
             // Dispose all active rulers
-            var rulers = Rulers.Keys.ToArray();
+            Ruler[] rulers = Rulers.Keys.ToArray();
             foreach (Ruler ruler in rulers)
             {
                 ruler.Dispose();
@@ -323,9 +323,9 @@ namespace CharacterRuler
         {
             if (!ActiveRulers.ContainsKey(id))
                 return;
-            var rulers = ActiveRulers[id].ToArray();
+            Ruler[] rulers = ActiveRulers[id].ToArray();
 
-            foreach (var ruler in rulers)
+            foreach (Ruler ruler in rulers)
             {
                 ruler.Dispose();
             }
