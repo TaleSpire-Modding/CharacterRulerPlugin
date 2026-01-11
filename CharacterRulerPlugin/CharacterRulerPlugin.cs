@@ -14,7 +14,7 @@ namespace CharacterRuler
     [BepInPlugin(Guid, PluginName, Version)]
     [BepInDependency(SetInjectionFlag.Guid)]
     [BepInDependency(RadialUIPlugin.Guid)]
-    public class CharacterRulerPlugin : DependencyUnityPlugin
+    public class CharacterRulerPlugin : DependencyUnityPlugin<CharacterRulerPlugin>
     {
         // constants
         public const string PluginName = "Character Ruler Plugin";
@@ -74,7 +74,7 @@ namespace CharacterRuler
             CreaturePerceptionManager.OnLineOfSightUpdated -= LOSUpdate;
 
             // Unpatch Harmony patches
-            harmony.UnpatchSelf();
+            harmony?.UnpatchSelf();
 
             Logger.LogDebug("Character Ruler unloaded");
         }
@@ -128,8 +128,8 @@ namespace CharacterRuler
                 assets = new  [] { LocalClient.SelectedCreatureId};
             }
 
-            CreaturePresenter.TryGetAsset(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature()), out CreatureBoardAsset asset2);
-            CreatureGuid targetId = new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature());
+            CreaturePresenter.TryGetAsset(new CreatureGuid(RadialUIPlugin.GetLastRadialTargetCreature()), out CreatureBoardAsset asset2);
+            CreatureGuid targetId = new CreatureGuid(RadialUIPlugin.GetLastRadialTargetCreature());
             foreach (CreatureGuid assetId in assets)
             {
                 CreaturePresenter.TryGetAsset(assetId, out CreatureBoardAsset asset);
